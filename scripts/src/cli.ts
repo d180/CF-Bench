@@ -63,7 +63,7 @@ async function verify(task: Task, ctx: TaskContext): Promise<number> {
 
   console.log('4. grade (expect PASS, settling)');
   const fixed = await gradeUntilSettled(task, ctx, {
-    settleMs: 45_000,
+    settleMs: 120_000,
     onRetry: (attempt) => { console.log(`   ...not settled yet (attempt ${String(attempt)}), retrying`); },
   });
   printGrade(fixed);

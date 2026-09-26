@@ -41,7 +41,6 @@ export interface BenchConfig {
   teamDomain: string;
   allowedEmailDomain: string;
   originAIp: string;
-  originBAddr: string | null;
   adminAllowedIp: string;
 }
 
