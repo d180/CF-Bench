@@ -1,4 +1,14 @@
-import type { DnsRecord, DnsRecordInput, Ruleset, RulesetRule, SettingValue } from '@cf-bench/cf';
+import type {
+  AccessApp,
+  AccessAppInput,
+  AccessPolicy,
+  AccessPolicyInput,
+  DnsRecord,
+  DnsRecordInput,
+  Ruleset,
+  RulesetRule,
+  SettingValue,
+} from '@cf-bench/cf';
 import type { HttpProbe } from './http.ts';
 
 /**
@@ -17,6 +27,11 @@ export interface CfApi {
   deleteDnsRecord(zoneId: string, recordId: string): Promise<void>;
   getEntrypointRuleset(zoneId: string, phase: string): Promise<Ruleset | null>;
   putEntrypointRuleset(zoneId: string, phase: string, rules: RulesetRule[]): Promise<Ruleset>;
+  listAccessApps(accountId: string): Promise<AccessApp[]>;
+  createAccessApp(accountId: string, app: AccessAppInput): Promise<AccessApp>;
+  deleteAccessApp(accountId: string, appId: string): Promise<void>;
+  listAccessPolicies(accountId: string, appId: string): Promise<AccessPolicy[]>;
+  createAccessPolicy(accountId: string, appId: string, policy: AccessPolicyInput): Promise<AccessPolicy>;
 }
 
 export interface BenchConfig {
@@ -102,5 +117,6 @@ export function summarize(result: GradeResult): string {
 export function renderPrompt(task: Task, config: BenchConfig): string {
   return task.prompt
     .replaceAll('{{ZONE}}', config.zoneName)
-    .replaceAll('{{ADMIN_ALLOWED_IP}}', config.adminAllowedIp);
+    .replaceAll('{{ADMIN_ALLOWED_IP}}', config.adminAllowedIp)
+    .replaceAll('{{EMAIL_DOMAIN}}', config.allowedEmailDomain);
 }

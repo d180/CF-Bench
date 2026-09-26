@@ -1,4 +1,4 @@
-import type { RulesetRule } from '@cf-bench/cf';
+import type { AccessApp, AccessPolicy, RulesetRule } from '@cf-bench/cf';
 import type { BenchConfig, CfApi, ProbeResult, TaskContext } from '@cf-bench/tasks';
 import type { HttpProbe } from '@cf-bench/tasks';
 
@@ -13,12 +13,20 @@ export const testConfig: BenchConfig = {
   adminAllowedIp: '198.51.100.7',
 };
 
+export interface FakeAccess {
+  apps?: AccessApp[];
+  policies?: Record<string, AccessPolicy[]>;
+}
+
 export function fakeCf(
   settings: Record<string, unknown> = {},
   rulesets: Record<string, RulesetRule[]> = {},
+  access: FakeAccess = {},
 ): CfApi {
   const store = { ...settings };
   const phases: Record<string, RulesetRule[]> = { ...rulesets };
+  let apps: AccessApp[] = [...(access.apps ?? [])];
+  const policies: Record<string, AccessPolicy[]> = { ...(access.policies ?? {}) };
   return {
     getZoneSetting: (_zone, name) => Promise.resolve((store[name] ?? null) as never),
     setZoneSetting: (_zone, name, value) => { store[name] = value; return Promise.resolve(); },
@@ -36,7 +44,28 @@ export function fakeCf(
       phases[phase] = rules;
       return Promise.resolve({ id: 'rs_test', name: phase, kind: 'zone', phase, rules });
     },
+    listAccessApps: () => Promise.resolve(apps),
+    createAccessApp: (_account, app) => {
+      const created: AccessApp = { id: `app_${String(apps.length + 1)}`, ...app };
+      apps.push(created);
+      return Promise.resolve(created);
+    },
+    deleteAccessApp: (_account, appId) => {
+      apps = apps.filter((a) => a.id !== appId);
+      return Promise.resolve();
+    },
+    listAccessPolicies: (_account, appId) => Promise.resolve(policies[appId] ?? []),
+    createAccessPolicy: (_account, appId, policy) => {
+      const created: AccessPolicy = { id: `pol_${appId}`, ...policy };
+      policies[appId] = [...(policies[appId] ?? []), created];
+      return Promise.resolve(created);
+    },
   };
+}
+
+/** Read back the Access apps a seed/reset left behind. */
+export function appsOf(cf: CfApi): Promise<AccessApp[]> {
+  return cf.listAccessApps('acct_test');
 }
 
 /** Read back what a seed/reset wrote, for idempotency assertions. */

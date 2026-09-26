@@ -63,3 +63,44 @@ export interface Ruleset {
   phase: string;
   rules?: RulesetRule[];
 }
+
+export interface AccessDestination {
+  type: string;
+  uri?: string;
+}
+
+export interface AccessApp {
+  id: string;
+  name: string;
+  type: string;
+  /** Legacy single-hostname field. Cloudflare still populates it alongside `destinations`. */
+  domain?: string;
+  destinations?: AccessDestination[];
+  session_duration?: string;
+  aud?: string;
+}
+
+export interface AccessAppInput {
+  name: string;
+  type: string;
+  domain: string;
+  session_duration?: string;
+}
+
+/** Access policy rule selectors are open-ended; kept loose on purpose. */
+export type AccessRule = Record<string, unknown>;
+
+export interface AccessPolicy {
+  id: string;
+  name: string;
+  decision: string;
+  include?: AccessRule[];
+  exclude?: AccessRule[];
+  require?: AccessRule[];
+}
+
+export interface AccessPolicyInput {
+  name: string;
+  decision: string;
+  include: AccessRule[];
+}

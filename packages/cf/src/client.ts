@@ -1,5 +1,9 @@
 import { CfError } from './errors.ts';
 import type {
+  AccessApp,
+  AccessAppInput,
+  AccessPolicy,
+  AccessPolicyInput,
   CfEnvelope,
   DnsRecord,
   DnsRecordInput,
@@ -161,6 +165,36 @@ export class CloudflareClient {
     return this.request<Ruleset>('PUT', `/zones/${zoneId}/rulesets/phases/${phase}/entrypoint`, {
       rules,
     });
+  }
+
+  // --- Access (account-scoped) -------------------------------------------
+
+  listAccessApps(accountId: string): Promise<AccessApp[]> {
+    return this.request<AccessApp[]>('GET', `/accounts/${accountId}/access/apps`);
+  }
+
+  createAccessApp(accountId: string, app: AccessAppInput): Promise<AccessApp> {
+    return this.request<AccessApp>('POST', `/accounts/${accountId}/access/apps`, app);
+  }
+
+  async deleteAccessApp(accountId: string, appId: string): Promise<void> {
+    await this.request('DELETE', `/accounts/${accountId}/access/apps/${appId}`);
+  }
+
+  listAccessPolicies(accountId: string, appId: string): Promise<AccessPolicy[]> {
+    return this.request<AccessPolicy[]>('GET', `/accounts/${accountId}/access/apps/${appId}/policies`);
+  }
+
+  createAccessPolicy(
+    accountId: string,
+    appId: string,
+    policy: AccessPolicyInput,
+  ): Promise<AccessPolicy> {
+    return this.request<AccessPolicy>(
+      'POST',
+      `/accounts/${accountId}/access/apps/${appId}/policies`,
+      policy,
+    );
   }
 }
 
