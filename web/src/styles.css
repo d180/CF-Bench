@@ -1,0 +1,136 @@
+:root {
+  --bg: #fbfbfa;
+  --panel: #ffffff;
+  --line: #e4e4e1;
+  --ink: #1d1d1b;
+  --muted: #6b6b66;
+  --pass: #1a7f4b;
+  --fail: #b3261e;
+  --accent: #2b5fd9;
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 14px/1.55 ui-sans-serif, -apple-system, "Segoe UI", system-ui, sans-serif;
+}
+
+.wrap { max-width: 980px; margin: 0 auto; padding: 32px 20px 80px; }
+
+header h1 { font-size: 21px; margin: 0 0 4px; letter-spacing: -0.01em; }
+header p { margin: 0 0 28px; color: var(--muted); }
+
+.task {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin-bottom: 14px;
+  overflow: hidden;
+}
+
+.task-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  cursor: pointer;
+}
+.task-head:hover { background: #fafaf9; }
+.task-head h2 { font-size: 15px; margin: 0; font-weight: 600; flex: 1; }
+
+.badge {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 7px;
+  border-radius: 4px;
+  border: 1px solid var(--line);
+  color: var(--muted);
+}
+.badge.easy   { color: #1a7f4b; border-color: #bfe3cd; }
+.badge.medium { color: #9a6700; border-color: #eedfb4; }
+.badge.hard   { color: #b3261e; border-color: #f2c9c6; }
+
+.id { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; color: var(--muted); }
+
+.task-body { padding: 0 16px 16px; border-top: 1px solid var(--line); }
+
+.ticket {
+  white-space: pre-wrap;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12.5px;
+  line-height: 1.6;
+  background: #f7f7f5;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 14px;
+  margin: 16px 0;
+  color: #333;
+}
+
+.actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 8px; }
+
+button {
+  font: inherit;
+  padding: 6px 13px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: #fff;
+  cursor: pointer;
+  color: var(--ink);
+}
+button:hover:not(:disabled) { border-color: #c9c9c4; background: #fafaf9; }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+button.primary:hover:not(:disabled) { background: #2450bd; border-color: #2450bd; }
+
+input[type="url"], input[type="text"] {
+  font: inherit;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  min-width: 260px;
+  flex: 1;
+}
+
+.notice { font-size: 13px; padding: 8px 11px; border-radius: 6px; margin: 10px 0; }
+.notice.err { background: #fdf0ef; color: var(--fail); border: 1px solid #f2c9c6; }
+.notice.ok  { background: #eff8f2; color: var(--pass); border: 1px solid #bfe3cd; }
+
+h3 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin: 22px 0 8px; }
+
+.run { border: 1px solid var(--line); border-radius: 6px; margin-bottom: 8px; background: #fff; }
+.run-head { display: flex; align-items: center; gap: 10px; padding: 9px 12px; cursor: pointer; font-size: 13px; }
+.run-head:hover { background: #fafaf9; }
+.run-head time { color: var(--muted); font-variant-numeric: tabular-nums; }
+.spacer { flex: 1; }
+
+.verdict { font-weight: 600; font-size: 12px; }
+.verdict.pass { color: var(--pass); }
+.verdict.fail { color: var(--fail); }
+.verdict.pending { color: var(--muted); font-weight: 400; }
+
+.actor { font-size: 11px; padding: 1px 7px; border-radius: 10px; border: 1px solid var(--line); color: var(--muted); }
+
+.checks { border-top: 1px solid var(--line); padding: 10px 12px; }
+.check { display: flex; gap: 9px; padding: 5px 0; font-size: 13px; align-items: baseline; }
+.check + .check { border-top: 1px dotted #ededea; }
+.mark { font-size: 11px; font-weight: 600; min-width: 34px; }
+.mark.pass { color: var(--pass); }
+.mark.fail { color: var(--fail); }
+.check-name { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; min-width: 250px; }
+.check-detail { color: var(--muted); flex: 1; }
+.kind { font-size: 10px; text-transform: uppercase; color: #9a9a93; letter-spacing: 0.04em; }
+
+.empty { color: var(--muted); font-size: 13px; padding: 6px 0; }
+a { color: var(--accent); }
+
+@media (max-width: 760px) {
+  .check { flex-wrap: wrap; }
+  .check-name { min-width: 0; }
+  input[type="url"] { min-width: 0; width: 100%; }
+}

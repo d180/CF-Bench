@@ -6,13 +6,15 @@
     "packages/*",
     "tasks",
     "scripts",
-    "worker"
+    "worker",
+    "web"
   ],
   "scripts": {
     "cf-bench": "tsx scripts/src/cli.ts",
     "test": "vitest run",
-    "typecheck": "tsc -p tsconfig.json && tsc -p worker/tsconfig.json",
-    "worker:dev": "npm --workspace @cf-bench/worker run dev"
+    "typecheck": "tsc -p tsconfig.json && tsc -p worker/tsconfig.json && tsc -p web/tsconfig.json",
+    "worker:dev": "npm --workspace @cf-bench/worker run dev",
+    "web:dev": "npm --workspace @cf-bench/web run dev"
   },
   "devDependencies": {
     "tsx": "^4.19.2",
