@@ -27,6 +27,7 @@ export interface BenchConfig {
   allowedEmailDomain: string;
   originAIp: string;
   originBAddr: string | null;
+  adminAllowedIp: string;
 }
 
 export type CheckKind = 'config' | 'http';
@@ -48,6 +49,11 @@ export interface TaskContext {
   cf: CfApi;
   config: BenchConfig;
   http: HttpProbe;
+  /**
+   * Injectable delay. Some graders must let real time pass - cache freshness
+   * cannot be observed in zero seconds - and tests should not pay for it.
+   */
+  sleep?: (ms: number) => Promise<void>;
 }
 
 export type Difficulty = 'easy' | 'medium' | 'hard';
@@ -56,7 +62,13 @@ export interface Task {
   id: string;
   title: string;
   difficulty: Difficulty;
-  /** Written as a support ticket: symptom and goal only, never the solution. */
+  /**
+   * Written as a support ticket: symptom and goal only, never the solution.
+   *
+   * May contain `{{ZONE}}` and `{{ADMIN_ALLOWED_IP}}` placeholders so no real
+   * hostname or address is baked into the repo. Render with `renderPrompt`
+   * before handing the text to a human or an agent.
+   */
   prompt: string;
 
   /** Put the zone into this task's starting state. */
@@ -84,4 +96,11 @@ export interface Task {
 export function summarize(result: GradeResult): string {
   const passed = result.checks.filter((c) => c.pass).length;
   return `${result.pass ? 'PASS' : 'FAIL'} (${String(passed)}/${String(result.checks.length)} checks)`;
+}
+
+/** Substitute deployment-specific values into a task's ticket text. */
+export function renderPrompt(task: Task, config: BenchConfig): string {
+  return task.prompt
+    .replaceAll('{{ZONE}}', config.zoneName)
+    .replaceAll('{{ADMIN_ALLOWED_IP}}', config.adminAllowedIp);
 }

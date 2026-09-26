@@ -1,4 +1,4 @@
-import { getTask, gradeUntilSettled, tasks } from '@cf-bench/tasks';
+import { getTask, gradeUntilBroken, gradeUntilSettled, seedAndConfirm, tasks } from '@cf-bench/tasks';
 import type { GradeResult, Task, TaskContext } from '@cf-bench/tasks';
 import { loadContext } from './config.ts';
 
@@ -38,18 +38,7 @@ function configShape(result: GradeResult): string {
   );
 }
 
-const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 
-/** Wait for the seeded breakage to be observable at the edge, not just written. */
-async function gradeUntilBroken(task: Task, ctx: TaskContext, budgetMs = 30_000): Promise<GradeResult> {
-  const deadline = Date.now() + budgetMs;
-  let result = await task.grade(ctx);
-  while (result.pass && Date.now() < deadline) {
-    await sleep(5_000);
-    result = await task.grade(ctx);
-  }
-  return result;
-}
 
 async function verify(task: Task, ctx: TaskContext): Promise<number> {
   let failures = 0;
@@ -60,13 +49,14 @@ async function verify(task: Task, ctx: TaskContext): Promise<number> {
 
   console.log(`\n=== verify ${task.id} ===\n`);
 
-  console.log('1. seed');
-  await task.seed(ctx);
+  console.log('1. seed, then wait for the breakage to be observable');
+  const seeded = await seedAndConfirm(task, ctx, {
+    onRetry: (attempt) => { console.log(`   ...seed not visible at the edge yet (attempt ${String(attempt)})`); },
+  });
 
   console.log('2. grade (expect FAIL)');
-  const seeded = await task.grade(ctx);
-  printGrade(seeded);
-  step(!seeded.pass, 'seeded state grades as FAIL');
+  printGrade(seeded.observed);
+  step(seeded.confirmed, 'seeded state grades as FAIL');
 
   console.log('\n3. apply known-good fix');
   await task.applyKnownFix(ctx);
@@ -90,7 +80,7 @@ async function verify(task: Task, ctx: TaskContext): Promise<number> {
   );
 
   console.log('6. confirm the broken starting state is live again');
-  const restored = await gradeUntilBroken(task, ctx);
+  const restored = await gradeUntilBroken(task, ctx, {});
   printGrade(restored);
   step(!restored.pass, 'reset restored the broken starting state');
 
@@ -128,10 +118,17 @@ async function main(): Promise<number> {
   const ctx = loadContext();
 
   switch (command) {
-    case 'seed':
-      await task.seed(ctx);
-      console.log(`seeded ${task.id}`);
+    case 'seed': {
+      const outcome = await seedAndConfirm(task, ctx, {
+        onRetry: () => { console.log('   ...waiting for the seeded state to reach the edge'); },
+      });
+      if (!outcome.confirmed) {
+        console.error(`seeded ${task.id}, but it still grades as PASS - the breakage is not live.`);
+        return 1;
+      }
+      console.log(`seeded ${task.id} (breakage confirmed live)`);
       return 0;
+    }
     case 'reset':
       await task.reset(ctx);
       console.log(`reset ${task.id}`);

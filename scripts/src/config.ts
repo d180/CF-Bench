@@ -47,11 +47,13 @@ export function loadContext(): LoadedContext {
     allowedEmailDomain: required(env, 'ACCESS_ALLOWED_EMAIL_DOMAIN'),
     originAIp: required(env, 'ORIGIN_A_IP'),
     originBAddr: (env['ORIGIN_B_ADDR'] ?? '') === '' ? null : (env['ORIGIN_B_ADDR'] as string),
+    adminAllowedIp: required(env, 'ADMIN_ALLOWED_IP'),
   };
 
   return {
     cf: new CloudflareClient({ token: required(env, 'CF_API_TOKEN') }),
     config,
     http: createHttpProbe(),
+    sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
   };
 }

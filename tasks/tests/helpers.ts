@@ -1,3 +1,4 @@
+import type { RulesetRule } from '@cf-bench/cf';
 import type { BenchConfig, CfApi, ProbeResult, TaskContext } from '@cf-bench/tasks';
 import type { HttpProbe } from '@cf-bench/tasks';
 
@@ -9,10 +10,15 @@ export const testConfig: BenchConfig = {
   allowedEmailDomain: 'example.edu',
   originAIp: '203.0.113.10',
   originBAddr: null,
+  adminAllowedIp: '198.51.100.7',
 };
 
-export function fakeCf(settings: Record<string, unknown> = {}): CfApi {
+export function fakeCf(
+  settings: Record<string, unknown> = {},
+  rulesets: Record<string, RulesetRule[]> = {},
+): CfApi {
   const store = { ...settings };
+  const phases: Record<string, RulesetRule[]> = { ...rulesets };
   return {
     getZoneSetting: (_zone, name) => Promise.resolve((store[name] ?? null) as never),
     setZoneSetting: (_zone, name, value) => { store[name] = value; return Promise.resolve(); },
@@ -20,9 +26,22 @@ export function fakeCf(settings: Record<string, unknown> = {}): CfApi {
     createDnsRecord: () => Promise.reject(new Error('not used')),
     updateDnsRecord: () => Promise.reject(new Error('not used')),
     deleteDnsRecord: () => Promise.resolve(),
-    getEntrypointRuleset: () => Promise.resolve(null),
-    putEntrypointRuleset: () => Promise.reject(new Error('not used')),
+    getEntrypointRuleset: (_zone, phase) =>
+      Promise.resolve(
+        phases[phase] === undefined
+          ? null
+          : { id: 'rs_test', name: phase, kind: 'zone', phase, rules: phases[phase] },
+      ),
+    putEntrypointRuleset: (_zone, phase, rules) => {
+      phases[phase] = rules;
+      return Promise.resolve({ id: 'rs_test', name: phase, kind: 'zone', phase, rules });
+    },
   };
+}
+
+/** Read back what a seed/reset wrote, for idempotency assertions. */
+export async function rulesOf(cf: CfApi, phase: string): Promise<RulesetRule[]> {
+  return (await cf.getEntrypointRuleset('z', phase))?.rules ?? [];
 }
 
 export function probeResult(partial: Partial<ProbeResult> & { url: string }): ProbeResult {
@@ -38,19 +57,31 @@ export function probeResult(partial: Partial<ProbeResult> & { url: string }): Pr
   };
 }
 
-/** Routes by URL prefix so a test can describe http:// and https:// separately. */
-export function fakeProbe(routes: Record<string, ProbeResult>): HttpProbe {
+/**
+ * Routes by longest-matching URL prefix. A route may be a single result or a
+ * queue of them, so a test can say "first call stale, second call fresh".
+ * Once a queue runs dry the last entry repeats.
+ */
+export function fakeProbe(routes: Record<string, ProbeResult | ProbeResult[]>): HttpProbe {
+  const queues: Record<string, ProbeResult[]> = {};
+  for (const [key, value] of Object.entries(routes)) {
+    queues[key] = Array.isArray(value) ? [...value] : [value];
+  }
   return {
     get: (url) => {
-      const match = Object.keys(routes).find((k) => url.startsWith(k));
+      const match = Object.keys(queues)
+        .filter((k) => url.startsWith(k))
+        .sort((a, b) => b.length - a.length)[0];
       if (match === undefined) throw new Error(`fakeProbe has no route for ${url}`);
-      return Promise.resolve(routes[match] as ProbeResult);
+      const queue = queues[match] as ProbeResult[];
+      const next = queue.length > 1 ? (queue.shift() as ProbeResult) : (queue[0] as ProbeResult);
+      return Promise.resolve(next);
     },
   };
 }
 
 export function ctx(cf: CfApi, http: HttpProbe): TaskContext {
-  return { cf, config: testConfig, http };
+  return { cf, config: testConfig, http, sleep: () => Promise.resolve() };
 }
 
 export function check(result: { checks: { name: string; pass: boolean }[] }, name: string): boolean {

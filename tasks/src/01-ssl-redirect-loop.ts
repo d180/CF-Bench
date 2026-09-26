@@ -1,3 +1,4 @@
+import { applyHealthyBaseline } from './baseline.ts';
 import type { Check, GradeResult, Task, TaskContext } from './types.ts';
 
 const PROMPT = `Ticket #4417 - Website down, "too many redirects"
@@ -126,6 +127,6 @@ function describeChain(chain: { url: string; status: number }[]): string {
  * subsequent Flexible write cannot be undone by a scan.
  */
 async function converge(ctx: TaskContext): Promise<void> {
-  await ctx.cf.setZoneSetting(ctx.config.zoneId, 'ssl_automatic_mode', 'custom');
+  await applyHealthyBaseline(ctx);
   await ctx.cf.setZoneSetting(ctx.config.zoneId, 'ssl', 'flexible');
 }
