@@ -1,0 +1,27 @@
+name = "cf-bench"
+main = "src/index.ts"
+compatibility_date = "2024-12-18"
+compatibility_flags = ["nodejs_compat"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "cf-bench"
+database_id = "PLACEHOLDER_SET_BY_WRANGLER_D1_CREATE"
+
+[vars]
+CF_ACCOUNT_ID = ""
+CF_ZONE_ID = ""
+CF_ZONE_NAME = ""
+CF_TEAM_DOMAIN = ""
+ACCESS_ALLOWED_EMAIL_DOMAIN = ""
+ORIGIN_A_IP = ""
+ADMIN_ALLOWED_IP = ""
+
+# Secrets are NOT set here. Use:
+#   wrangler secret put CF_API_TOKEN
+#   wrangler secret put COASTY_API_KEY
+# and worker/.dev.vars for local development (gitignored).
+
+[dev]
+# 8787 is the Coasty cookbook mock server's default port; stay out of its way.
+port = 8788

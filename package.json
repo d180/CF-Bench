@@ -2,11 +2,17 @@
   "name": "cf-bench",
   "private": true,
   "type": "module",
-  "workspaces": ["packages/*", "tasks", "scripts"],
+  "workspaces": [
+    "packages/*",
+    "tasks",
+    "scripts",
+    "worker"
+  ],
   "scripts": {
     "cf-bench": "tsx scripts/src/cli.ts",
     "test": "vitest run",
-    "typecheck": "tsc -p tsconfig.json"
+    "typecheck": "tsc -p tsconfig.json && tsc -p worker/tsconfig.json",
+    "worker:dev": "npm --workspace @cf-bench/worker run dev"
   },
   "devDependencies": {
     "tsx": "^4.19.2",
