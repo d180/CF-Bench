@@ -1,0 +1,7 @@
+{
+  "name": "@cf-bench/cli",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": { "@cf-bench/cf": "*", "@cf-bench/tasks": "*" }
+}

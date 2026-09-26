@@ -1,0 +1,8 @@
+{
+  "name": "@cf-bench/tasks",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "dependencies": { "@cf-bench/cf": "*" }
+}

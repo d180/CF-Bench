@@ -1,0 +1,16 @@
+{
+  "name": "cf-bench",
+  "private": true,
+  "type": "module",
+  "workspaces": ["packages/*", "tasks", "scripts"],
+  "scripts": {
+    "cf-bench": "tsx scripts/src/cli.ts",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}
