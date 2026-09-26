@@ -147,3 +147,72 @@ export async function takeRateLimit(
     .run();
   return true;
 }
+
+export async function attachCoastyRun(
+  env: Env,
+  runId: string,
+  coasty: { id: string; machineId: string | null; status: string; webhookSecret: string | null },
+): Promise<void> {
+  await env.DB.prepare(
+    `UPDATE runs SET coasty_run_id = ?, coasty_machine_id = ?, coasty_status = ?,
+            webhook_secret = ?, status = 'running' WHERE id = ?`,
+  )
+    .bind(coasty.id, coasty.machineId, coasty.status, coasty.webhookSecret, runId)
+    .run();
+}
+
+export interface CoastyRunRow {
+  id: string;
+  task_id: string;
+  webhook_secret: string | null;
+  coasty_machine_id: string | null;
+}
+
+export function findRunByCoastyId(env: Env, coastyRunId: string): Promise<CoastyRunRow | null> {
+  return env.DB.prepare(
+    `SELECT id, task_id, webhook_secret, coasty_machine_id FROM runs WHERE coasty_run_id = ?`,
+  )
+    .bind(coastyRunId)
+    .first<CoastyRunRow>();
+}
+
+/**
+ * Record a delivery, returning false when these exact bytes were already seen.
+ *
+ * Relies on the UNIQUE index rather than a read-then-write, so two concurrent
+ * deliveries of the same webhook cannot both decide they are the first.
+ */
+export async function claimWebhookDelivery(
+  env: Env,
+  coastyRunId: string,
+  event: string,
+  bodySha256: string,
+  signatureTs: number,
+): Promise<boolean> {
+  try {
+    await env.DB.prepare(
+      `INSERT INTO webhook_events (coasty_run_id, event, body_sha256, signature_ts, received_at)
+       VALUES (?, ?, ?, ?, ?)`,
+    )
+      .bind(coastyRunId, event, bodySha256, signatureTs, new Date().toISOString())
+      .run();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function updateCoastyStatus(
+  env: Env,
+  runId: string,
+  status: string,
+  steps: number | null,
+  costCents: number | null,
+): Promise<void> {
+  await env.DB.prepare(
+    `UPDATE runs SET coasty_status = ?, coasty_steps = ?, coasty_cost_cents = ?,
+            finished_at = ? WHERE id = ?`,
+  )
+    .bind(status, steps, costCents, new Date().toISOString(), runId)
+    .run();
+}
