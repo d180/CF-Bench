@@ -4,6 +4,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { gradeUntilSettled, renderPrompt, seedAndConfirm } from '@cf-bench/tasks';
 import type { GradeResult, Task, TaskContext } from '@cf-bench/tasks';
+import { loadEnv } from './config.ts';
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const agentDir = resolve(repoRoot, 'agents/browser-use');
@@ -13,7 +14,10 @@ export interface BrowserUseResult {
   steps?: number;
   seconds?: number;
   model?: string;
+  agent_claims_success?: boolean | null;
   agent_self_report?: string;
+  errors?: string[];
+  urls_visited?: string[];
   error?: string;
 }
 
@@ -31,6 +35,12 @@ export async function runBrowserUseAgent(
   options: { workerUrl: string; maxSteps: number; model?: string },
 ): Promise<number> {
   console.log(`\n=== agent-run ${task.id} (browser-use) ===\n`);
+
+  const env = loadEnv();
+  if ((env['OPENROUTER_API_KEY'] ?? '') === '') {
+    console.error('OPENROUTER_API_KEY is empty in .env - the agent has no model to call.');
+    return 1;
+  }
 
   const python = resolve(agentDir, '.venv/bin/python3');
   if (!existsSync(python)) {
@@ -55,14 +65,20 @@ export async function runBrowserUseAgent(
   console.log(`2. run recorded${runId === null ? ' (worker unreachable - not recorded)' : `: ${runId}`}`);
 
   console.log('3. handing the ticket to browser-use (a Chrome window will open)\n');
-  const result = await spawnRunner(python, task, ctx, options);
+  const result = await spawnRunner(python, task, ctx, { ...options, env });
 
   console.log(`\n   agent finished: ${result.ok ? 'ran to completion' : `error - ${result.error ?? 'unknown'}`}`);
   if (result.steps !== undefined) {
     console.log(`   steps: ${String(result.steps)}  |  seconds: ${String(result.seconds ?? 0)}`);
   }
+  if (result.agent_claims_success !== undefined && result.agent_claims_success !== null) {
+    console.log(`   agent claims success: ${String(result.agent_claims_success)} (not the verdict - the zone is)`);
+  }
   if (result.agent_self_report !== undefined && result.agent_self_report !== '') {
     console.log(`   agent's own account: ${result.agent_self_report.slice(0, 300)}`);
+  }
+  if (result.errors !== undefined && result.errors.length > 0) {
+    console.log(`   agent errors: ${result.errors.slice(0, 3).join(' | ')}`);
   }
 
   // Graded regardless of what the agent claims. Its self-report is a trace
@@ -80,7 +96,7 @@ function spawnRunner(
   python: string,
   task: Task,
   ctx: TaskContext,
-  options: { maxSteps: number; model?: string },
+  options: { maxSteps: number; model?: string; env: Record<string, string> },
 ): Promise<BrowserUseResult> {
   return new Promise((resolvePromise) => {
     const args = [
@@ -92,7 +108,13 @@ function spawnRunner(
 
     const child = spawn(python, args, {
       cwd: agentDir,
-      env: { ...process.env },
+      // .env is never written into process.env, so the child is handed the
+      // variables it needs explicitly.
+      env: {
+        ...process.env,
+        OPENROUTER_API_KEY: options.env['OPENROUTER_API_KEY'] ?? '',
+        BROWSER_USE_MODEL: options.env['BROWSER_USE_MODEL'] ?? 'anthropic/claude-opus-5',
+      },
       stdio: ['pipe', 'pipe', 'inherit'], // stderr streams through so progress is visible
     });
 

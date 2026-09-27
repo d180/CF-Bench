@@ -36,6 +36,17 @@ export interface LoadedContext extends TaskContext {
   cf: CloudflareClient;
 }
 
+/**
+ * The raw .env map.
+ *
+ * `loadContext` deliberately does not write into `process.env`, so anything
+ * that spawns a child process has to pass the variables it needs explicitly
+ * rather than relying on inheritance.
+ */
+export function loadEnv(): Record<string, string> {
+  return loadEnvFile(resolve(repoRoot, '.env'));
+}
+
 export function loadContext(): LoadedContext {
   const env = loadEnvFile(resolve(repoRoot, '.env'));
 

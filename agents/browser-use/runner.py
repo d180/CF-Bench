@@ -28,6 +28,15 @@ def emit(payload: dict) -> None:
     sys.stdout.flush()
 
 
+def call(obj: object, name: str, default: object) -> object:
+    """Read a history field whether the library exposes it as a method or an attribute."""
+    try:
+        value = getattr(obj, name)
+        return value() if callable(value) else value
+    except Exception:  # noqa: BLE001 - a trace field must never fail the run
+        return default
+
+
 async def main() -> int:
     parser = argparse.ArgumentParser(description="Run a CF-Bench task with browser-use")
     parser.add_argument("--task-id", required=True)
@@ -76,14 +85,17 @@ async def main() -> int:
         return 1
 
     # The agent's own opinion of how it went is recorded for the trace but is
-    # never treated as the verdict - the harness grades the zone.
+    # never treated as the verdict - the harness grades the zone afterwards.
     emit({
         "ok": True,
         "task_id": args.task_id,
         "model": args.model,
         "seconds": round(time.time() - started, 1),
-        "steps": len(getattr(history, "history", []) or []),
-        "agent_self_report": str(history.final_result() or "")[:2000],
+        "steps": call(history, "number_of_steps", 0),
+        "agent_claims_success": call(history, "is_successful", None),
+        "agent_self_report": str(call(history, "final_result", "") or "")[:2000],
+        "errors": [str(e)[:300] for e in (call(history, "errors", []) or []) if e],
+        "urls_visited": [str(u) for u in (call(history, "urls", []) or [])][-10:],
     })
     return 0
 
