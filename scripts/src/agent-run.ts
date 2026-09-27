@@ -122,7 +122,7 @@ function spawnRunner(
       env: {
         ...process.env,
         OPENROUTER_API_KEY: options.env['OPENROUTER_API_KEY'] ?? '',
-        BROWSER_USE_MODEL: options.env['BROWSER_USE_MODEL'] ?? 'anthropic/claude-opus-5',
+        BROWSER_USE_MODEL: options.env['BROWSER_USE_MODEL'] ?? 'openai/gpt-5.1',
       },
       stdio: ['pipe', 'pipe', 'inherit'], // stderr streams through so progress is visible
     });

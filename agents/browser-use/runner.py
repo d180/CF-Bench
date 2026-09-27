@@ -40,7 +40,7 @@ def call(obj: object, name: str, default: object) -> object:
 async def main() -> int:
     parser = argparse.ArgumentParser(description="Run a CF-Bench task with browser-use")
     parser.add_argument("--task-id", required=True)
-    parser.add_argument("--model", default=os.environ.get("BROWSER_USE_MODEL", "anthropic/claude-opus-5"))
+    parser.add_argument("--model", default=os.environ.get("BROWSER_USE_MODEL", "openai/gpt-5.1"))
     parser.add_argument("--max-steps", type=int, default=40)
     parser.add_argument("--headless", action="store_true", help="off by default so the run is watchable")
     args = parser.parse_args()
@@ -61,21 +61,35 @@ async def main() -> int:
         emit({"ok": False, "error": f"browser-use is not installed: {exc}"})
         return 1
 
+    # Claude does not currently work with browser-use, in both directions:
+    #
+    #  - With response_format on (the default), Claude compiles a grammar from
+    #    browser-use's action-union schema and rejects it with "The compiled
+    #    grammar is too large". Seen identically via Anthropic, Azure, AWS and
+    #    Google on OpenRouter, so it is a model limit, not a flaky provider.
+    #  - With browser-use's escape hatch on (dont_force_structured_output +
+    #    add_schema_to_system_prompt), no response_format is sent and Claude
+    #    prefixes its JSON with markdown commentary. browser-use then calls
+    #    model_validate_json on the raw string with no extraction step, so it
+    #    fails at line 1 column 1 every time.
+    #
+    # Neither is fixable from here, so the default is a model whose structured
+    # output handles a schema this size. The escape hatch is still applied for
+    # anthropic/* so the failure mode is the parser rather than a 400.
+    is_claude = args.model.startswith("anthropic/")
+    if is_claude:
+        print(
+            "warning: anthropic/* models are known to fail with browser-use "
+            "(schema too large, or JSON wrapped in prose). Expect a void run.",
+            file=sys.stderr,
+        )
+
     llm = ChatOpenAI(
         model=args.model,
         api_key=api_key,
         base_url="https://openrouter.ai/api/v1",
-        # Claude compiles a grammar from the tool schema to constrain structured
-        # output, and browser-use's action union is large enough that every
-        # Claude route rejects it: "The compiled grammar is too large".
-        # Observed identically via Anthropic, Azure, AWS and Google on
-        # OpenRouter, so it is a model limit rather than a flaky provider.
-        #
-        # These two flags are browser-use's own escape hatch: put the JSON
-        # schema in the system prompt and parse the model's text, instead of
-        # constraining generation with a compiled grammar.
-        dont_force_structured_output=True,
-        add_schema_to_system_prompt=True,
+        dont_force_structured_output=is_claude,
+        add_schema_to_system_prompt=is_claude,
     )
 
     # from_system_chrome reuses the profile you are already signed in with, so
