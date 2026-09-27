@@ -82,14 +82,23 @@ export async function runBrowserUseAgent(
   }
 
   // An attempt that never reached the browser is not a failed attempt, it is a
-  // void one. Grading still runs - the zone is graded either way - but the
-  // distinction matters when comparing agents, so say it out loud.
-  const voided = !result.ok || (result.errors ?? []).length > 0;
+  // void one, and the distinction matters when comparing agents.
+  //
+  // Recovered errors are NOT the signal. Agents hit stale element indexes and
+  // transient click failures constantly and carry on; an earlier version of
+  // this check voided any run with a single error and mislabelled a clean 9/9
+  // as invalid. A run is void only when the runner itself failed, or when the
+  // agent never completed a step, or when every step it took errored.
+  const errorCount = (result.errors ?? []).length;
+  const steps = result.steps ?? 0;
+  const voided = !result.ok || steps === 0 || (errorCount > 0 && errorCount >= steps);
   if (voided) {
     console.log(
-      '\n   NOTE: the agent errored rather than attempting the task, so this run is not a\n' +
-      '         valid attempt. The verdict below still reflects the real state of the zone.',
+      '\n   NOTE: this run is not a valid attempt - the agent never completed a step.\n' +
+      '         The verdict below still reflects the real state of the zone.',
     );
+  } else if (errorCount > 0) {
+    console.log(`   (recovered from ${String(errorCount)} transient error(s) during the run)`);
   }
 
   console.log('\n4. grading the zone');
