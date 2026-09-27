@@ -231,3 +231,13 @@ a { color: var(--accent); }
   .check-name { min-width: 0; }
   .id { display: none; }
 }
+
+.model {
+  font-size: 11px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: #55554f;
+  background: #f7f7f5;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 0 6px;
+}

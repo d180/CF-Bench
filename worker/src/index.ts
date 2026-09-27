@@ -12,6 +12,9 @@ interface GradeBody {
   actor?: 'human' | 'agent';
   videoUrl?: string;
   notes?: string;
+  model?: string;
+  steps?: number;
+  durationSeconds?: number;
 }
 
 interface RunBody {
@@ -35,7 +38,7 @@ async function readBody<T extends object>(request: Request): Promise<T> {
 }
 import {
   attachCoastyRun, claimWebhookDelivery, createRun, findRunByCoastyId, listRuns,
-  markRunError, saveGrade, takeRateLimit, updateCoastyStatus,
+  markRunError, recordAgentMetadata, saveGrade, takeRateLimit, updateCoastyStatus,
 } from './db.ts';
 import type { AgentKind } from './db.ts';
 
@@ -128,6 +131,12 @@ app.post('/api/tasks/:id/grade', async (c) => {
       videoUrl: body.videoUrl,
       notes: body.notes,
     }));
+
+  if (body.model !== undefined || body.steps !== undefined || body.durationSeconds !== undefined) {
+    await recordAgentMetadata(c.env, runId, {
+      model: body.model, steps: body.steps, durationSeconds: body.durationSeconds,
+    });
+  }
 
   try {
     const result = await gradeUntilSettled(task, taskContext(c.env), { settleMs: 20_000 });
@@ -244,6 +253,8 @@ app.post('/api/tasks/:id/agent-run', async (c) => {
       status: run.status,
       webhookSecret: run.webhook_secret ?? null,
     });
+
+    await recordAgentMetadata(c.env, runId, { model: run.cua_version ?? 'coasty' });
 
     return c.json({
       runId,

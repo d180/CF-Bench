@@ -17,6 +17,9 @@ export interface Run {
   task_id: string;
   actor: 'human' | 'agent';
   agent_kind: 'coasty' | 'browser-use' | null;
+  model: string | null;
+  steps: number | null;
+  duration_seconds: number | null;
   status: string;
   passed: number | null;
   created_at: string;

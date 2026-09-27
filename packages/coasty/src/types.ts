@@ -46,6 +46,7 @@ export interface CoastyRun {
   id: string;
   object: string;
   status: CoastyRunStatus;
+  cua_version?: string;
   machine_id: string | null;
   task?: string;
   steps_completed?: number;

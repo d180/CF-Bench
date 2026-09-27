@@ -10,6 +10,9 @@ export interface RunRow {
   task_id: string;
   actor: Actor;
   agent_kind: AgentKind | null;
+  model: string | null;
+  steps: number | null;
+  duration_seconds: number | null;
   status: string;
   passed: number | null;
   created_at: string;
@@ -76,6 +79,25 @@ export async function saveGrade(env: Env, runId: string, result: GradeResult): P
   // Batched so a run is never left marked graded with a half-written set of
   // checks, which would misreport why it passed or failed.
   await env.DB.batch(statements);
+}
+
+/**
+ * Record what produced an attempt and how much work it took.
+ *
+ * Written after the agent finishes rather than at creation, because step count
+ * and duration are not known until then.
+ */
+export async function recordAgentMetadata(
+  env: Env,
+  runId: string,
+  meta: { model?: string; steps?: number; durationSeconds?: number },
+): Promise<void> {
+  await env.DB.prepare(
+    `UPDATE runs SET model = COALESCE(?, model), steps = COALESCE(?, steps),
+            duration_seconds = COALESCE(?, duration_seconds) WHERE id = ?`,
+  )
+    .bind(meta.model ?? null, meta.steps ?? null, meta.durationSeconds ?? null, runId)
+    .run();
 }
 
 export async function markRunError(env: Env, runId: string, message: string): Promise<void> {

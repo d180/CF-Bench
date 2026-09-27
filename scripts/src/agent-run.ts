@@ -96,7 +96,13 @@ export async function runBrowserUseAgent(
   const grade = await gradeUntilSettled(task, ctx, { settleMs: 30_000 });
   printGrade(grade);
 
-  if (runId !== null) await recordGrade(options.workerUrl, task.id, runId);
+  if (runId !== null) {
+    await recordGrade(options.workerUrl, task.id, runId, {
+      model: result.model ?? options.model ?? env['BROWSER_USE_MODEL'],
+      steps: result.steps,
+      durationSeconds: result.seconds,
+    });
+  }
 
   return grade.pass ? 0 : 1;
 }
@@ -159,12 +165,17 @@ async function registerRun(workerUrl: string, taskId: string): Promise<string | 
   }
 }
 
-async function recordGrade(workerUrl: string, taskId: string, runId: string): Promise<void> {
+async function recordGrade(
+  workerUrl: string,
+  taskId: string,
+  runId: string,
+  meta: { model?: string; steps?: number; durationSeconds?: number },
+): Promise<void> {
   try {
     await fetch(`${workerUrl}/api/tasks/${taskId}/grade`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ runId }),
+      body: JSON.stringify({ runId, ...meta }),
       signal: AbortSignal.timeout(120_000),
     });
   } catch {

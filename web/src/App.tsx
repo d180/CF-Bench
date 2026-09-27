@@ -195,6 +195,12 @@ function CheckList({ checks }: { checks: Check[] }): JSX.Element {
   );
 }
 
+/** Drop the vendor prefix; the agent_kind chip already says where it ran. */
+function shortModel(model: string): string {
+  const slash = model.indexOf('/');
+  return slash === -1 ? model : model.slice(slash + 1);
+}
+
 function RunRow({ run }: { run: Run }): JSX.Element {
   const [open, setOpen] = useState(false);
   const passed = run.checks.filter((c) => c.pass).length;
@@ -205,8 +211,13 @@ function RunRow({ run }: { run: Run }): JSX.Element {
       <div className="run-head" onClick={() => { setOpen(!open); }}>
         <span className="chev">{open ? '▾' : '▸'}</span>
         <span className="actor">{who}</span>
+        {run.model !== null && <span className="model">{shortModel(run.model)}</span>}
         <time>{new Date(run.created_at).toLocaleString()}</time>
         <span className="spacer" />
+        {run.steps !== null && <span className="kind">{run.steps} steps</span>}
+        {run.duration_seconds !== null && (
+          <span className="kind">{Math.round(run.duration_seconds)}s</span>
+        )}
         {run.checks.length > 0 && (
           <span className="kind">{passed}/{run.checks.length}</span>
         )}
