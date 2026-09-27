@@ -81,8 +81,17 @@ export async function runBrowserUseAgent(
     console.log(`   agent errors: ${result.errors.slice(0, 3).join(' | ')}`);
   }
 
-  // Graded regardless of what the agent claims. Its self-report is a trace
-  // artefact, not a verdict.
+  // An attempt that never reached the browser is not a failed attempt, it is a
+  // void one. Grading still runs - the zone is graded either way - but the
+  // distinction matters when comparing agents, so say it out loud.
+  const voided = !result.ok || (result.errors ?? []).length > 0;
+  if (voided) {
+    console.log(
+      '\n   NOTE: the agent errored rather than attempting the task, so this run is not a\n' +
+      '         valid attempt. The verdict below still reflects the real state of the zone.',
+    );
+  }
+
   console.log('\n4. grading the zone');
   const grade = await gradeUntilSettled(task, ctx, { settleMs: 30_000 });
   printGrade(grade);

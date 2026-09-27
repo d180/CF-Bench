@@ -65,6 +65,17 @@ async def main() -> int:
         model=args.model,
         api_key=api_key,
         base_url="https://openrouter.ai/api/v1",
+        # Claude compiles a grammar from the tool schema to constrain structured
+        # output, and browser-use's action union is large enough that every
+        # Claude route rejects it: "The compiled grammar is too large".
+        # Observed identically via Anthropic, Azure, AWS and Google on
+        # OpenRouter, so it is a model limit rather than a flaky provider.
+        #
+        # These two flags are browser-use's own escape hatch: put the JSON
+        # schema in the system prompt and parse the model's text, instead of
+        # constraining generation with a compiled grammar.
+        dont_force_structured_output=True,
+        add_schema_to_system_prompt=True,
     )
 
     # from_system_chrome reuses the profile you are already signed in with, so
