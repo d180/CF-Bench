@@ -90,6 +90,12 @@ async def main() -> int:
         base_url="https://openrouter.ai/api/v1",
         dont_force_structured_output=is_claude,
         add_schema_to_system_prompt=is_claude,
+        # browser-use defaults this to 4096, which a reasoning model spends on
+        # hidden reasoning before it has finished emitting the action object -
+        # the request then fails with finish_reason='length' and an incomplete
+        # structured output. Reasoning tokens are billed as output, so this is
+        # a real cost knob, not just a limit.
+        max_completion_tokens=int(os.environ.get("BROWSER_USE_MAX_TOKENS", "16000")),
     )
 
     # from_system_chrome reuses the profile you are already signed in with, so

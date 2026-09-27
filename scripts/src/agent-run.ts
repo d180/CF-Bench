@@ -123,6 +123,7 @@ function spawnRunner(
         ...process.env,
         OPENROUTER_API_KEY: options.env['OPENROUTER_API_KEY'] ?? '',
         BROWSER_USE_MODEL: options.env['BROWSER_USE_MODEL'] ?? 'openai/gpt-5.1',
+        BROWSER_USE_MAX_TOKENS: options.env['BROWSER_USE_MAX_TOKENS'] ?? '16000',
       },
       stdio: ['pipe', 'pipe', 'inherit'], // stderr streams through so progress is visible
     });
