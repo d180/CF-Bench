@@ -173,7 +173,7 @@ function RunRow({ run }: { run: Run }): JSX.Element {
     <div className="run">
       <div className="run-head" onClick={() => { setOpen(!open); }}>
         <time>{new Date(run.created_at).toLocaleString()}</time>
-        <span className="actor">{run.actor}</span>
+        <span className="actor">{run.agent_kind ?? run.actor}</span>
         <Verdict run={run} />
         {run.checks.length > 0 && (
           <span className="kind">

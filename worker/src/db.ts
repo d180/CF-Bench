@@ -3,10 +3,13 @@ import type { Env } from './env.ts';
 
 export type Actor = 'human' | 'agent';
 
+export type AgentKind = 'coasty' | 'browser-use';
+
 export interface RunRow {
   id: string;
   task_id: string;
   actor: Actor;
+  agent_kind: AgentKind | null;
   status: string;
   passed: number | null;
   created_at: string;
@@ -28,12 +31,19 @@ export interface RunView extends RunRow {
 
 export async function createRun(
   env: Env,
-  input: { taskId: string; actor: Actor; status: string; videoUrl?: string; notes?: string },
+  input: {
+    taskId: string;
+    actor: Actor;
+    status: string;
+    agentKind?: AgentKind;
+    videoUrl?: string;
+    notes?: string;
+  },
 ): Promise<string> {
   const id = crypto.randomUUID();
   await env.DB.prepare(
-    `INSERT INTO runs (id, task_id, actor, status, created_at, video_url, notes)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO runs (id, task_id, actor, status, created_at, agent_kind, video_url, notes)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
   )
     .bind(
       id,
@@ -41,6 +51,7 @@ export async function createRun(
       input.actor,
       input.status,
       new Date().toISOString(),
+      input.agentKind ?? null,
       input.videoUrl ?? null,
       input.notes ?? null,
     )

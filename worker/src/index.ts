@@ -13,8 +13,14 @@ interface GradeBody {
 }
 
 interface RunBody {
+  actor?: 'human' | 'agent';
+  agentKind?: AgentKind;
   videoUrl?: string;
   notes?: string;
+}
+
+interface AgentRunBody {
+  agent?: AgentKind;
 }
 
 /** A missing or malformed JSON body is an empty body, not an error. */
@@ -29,6 +35,7 @@ import {
   attachCoastyRun, claimWebhookDelivery, createRun, findRunByCoastyId, listRuns,
   markRunError, saveGrade, takeRateLimit, updateCoastyStatus,
 } from './db.ts';
+import type { AgentKind } from './db.ts';
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -116,8 +123,9 @@ app.post('/api/tasks/:id/runs', async (c) => {
   const body = await readBody<RunBody>(c.req.raw);
   const runId = await createRun(c.env, {
     taskId: task.id,
-    actor: 'human',
+    actor: body.actor ?? 'human',
     status: 'pending',
+    agentKind: body.agentKind,
     videoUrl: body.videoUrl,
     notes: body.notes,
   });
@@ -128,8 +136,29 @@ app.post('/api/tasks/:id/runs', async (c) => {
  * Agent runs spend real money - a machine is provisioned and every model step
  * is billed - so this is rate limited before anything is dispatched.
  */
+/**
+ * Dispatch a Coasty agent run.
+ *
+ * browser-use is deliberately NOT dispatchable from here: it is a local
+ * subprocess and the Workers runtime cannot spawn one. The CLI drives that
+ * agent and registers the resulting run through the endpoints above, so it
+ * still appears in the dashboard alongside Coasty and human attempts.
+ */
 app.post('/api/tasks/:id/agent-run', async (c) => {
   const task = getTask(c.req.param('id'));
+  const body = await readBody<AgentRunBody>(c.req.raw);
+  const agent: AgentKind = body.agent ?? 'coasty';
+
+  if (agent === 'browser-use') {
+    return c.json(
+      {
+        error:
+          'browser-use runs locally and cannot be dispatched from the Worker. ' +
+          `Run: npm run cf-bench -- agent-run ${task.id} --agent browser-use`,
+      },
+      400,
+    );
+  }
 
   if (!(await takeRateLimit(c.env, 'agent_run', 5, 3600))) {
     return c.json({ error: 'Rate limit reached: at most 5 agent runs per hour.' }, 429);
@@ -148,7 +177,9 @@ app.post('/api/tasks/:id/agent-run', async (c) => {
     return c.json({ error: 'Refusing to dispatch: the task still grades as PASS after reset.' }, 409);
   }
 
-  const runId = await createRun(c.env, { taskId: task.id, actor: 'agent', status: 'pending' });
+  const runId = await createRun(c.env, {
+    taskId: task.id, actor: 'agent', status: 'pending', agentKind: 'coasty',
+  });
   const coasty = new CoastyClient({
     apiKey: c.env.COASTY_API_KEY,
     baseUrl: c.env.COASTY_BASE_URL,

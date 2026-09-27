@@ -1,6 +1,7 @@
 import { getTask, gradeUntilBroken, gradeUntilSettled, seedAndConfirm, tasks } from '@cf-bench/tasks';
 import type { GradeResult, Task, TaskContext } from '@cf-bench/tasks';
 import { loadContext } from './config.ts';
+import { runBrowserUseAgent } from './agent-run.ts';
 
 const USAGE = `cf-bench
 
@@ -11,6 +12,10 @@ const USAGE = `cf-bench
   npm run cf-bench -- grade  <task-id>
   npm run cf-bench -- fix    <task-id>    (apply the known-good solution)
   npm run cf-bench -- verify <task-id>    (full integration loop)
+
+  npm run cf-bench -- agent-run <task-id> --agent browser-use [--max-steps N] [--model ID]
+                                          (reset, hand the ticket to a local
+                                           agent, then grade the zone)
 `;
 
 function printGrade(result: GradeResult): void {
@@ -143,6 +148,23 @@ async function main(): Promise<number> {
     }
     case 'verify':
       return await verify(task, ctx);
+    case 'agent-run': {
+      const argv = process.argv.slice(2);
+      const flag = (name: string): string | undefined => {
+        const index = argv.indexOf(`--${name}`);
+        return index === -1 ? undefined : argv[index + 1];
+      };
+      const agent = flag('agent') ?? 'browser-use';
+      if (agent !== 'browser-use') {
+        console.error(`Only browser-use runs from the CLI. Coasty runs are dispatched by the Worker.`);
+        return 1;
+      }
+      return await runBrowserUseAgent(task, ctx, {
+        workerUrl: process.env['WORKER_URL'] ?? 'http://127.0.0.1:8788',
+        maxSteps: Number(flag('max-steps') ?? '40'),
+        model: flag('model'),
+      });
+    }
     default:
       console.error(`Unknown command "${command}"\n`);
       console.log(USAGE);

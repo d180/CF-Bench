@@ -16,6 +16,7 @@ export interface Run {
   id: string;
   task_id: string;
   actor: 'human' | 'agent';
+  agent_kind: 'coasty' | 'browser-use' | null;
   status: string;
   passed: number | null;
   created_at: string;
