@@ -43,6 +43,7 @@ async def main() -> int:
     parser.add_argument("--model", default=os.environ.get("BROWSER_USE_MODEL", "openai/gpt-5.1"))
     parser.add_argument("--max-steps", type=int, default=40)
     parser.add_argument("--headless", action="store_true", help="off by default so the run is watchable")
+    parser.add_argument("--start-url", default="https://dash.cloudflare.com")
     args = parser.parse_args()
 
     ticket = sys.stdin.read().strip()
@@ -106,7 +107,18 @@ async def main() -> int:
         emit({"ok": False, "error": f"Could not attach to system Chrome: {exc}"})
         return 1
 
-    agent = Agent(task=ticket, llm=llm, browser=browser)
+    # Open the dashboard before the first decision. This is environment setup,
+    # not a hint: the ticket still says nothing about what to change, and a
+    # Coasty run gets the equivalent by targeting a machine that has the
+    # dashboard open. Without it the agent has to guess that it even has a
+    # browser, and one already answered a ticket with an essay instead of
+    # opening one.
+    agent = Agent(
+        task=ticket,
+        llm=llm,
+        browser=browser,
+        initial_actions=[{"navigate": {"url": args.start_url, "new_tab": False}}],
+    )
 
     started = time.time()
     try:

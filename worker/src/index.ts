@@ -1,6 +1,8 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import { getTask, gradeUntilSettled, renderPrompt, seedAndConfirm, tasks } from '@cf-bench/tasks';
+import {
+  getTask, gradeUntilSettled, renderBriefedPrompt, renderPrompt, seedAndConfirm, tasks,
+} from '@cf-bench/tasks';
 import { CoastyClient, TERMINAL_EVENTS, sha256Hex, verifySignature } from '@cf-bench/coasty';
 import type { CoastyWebhookPayload } from '@cf-bench/coasty';
 import { benchConfig, taskContext, type Env } from './env.ts';
@@ -203,7 +205,7 @@ app.post('/api/tasks/:id/agent-run', async (c) => {
     const run = await coasty.createRun(
       {
         machine_id: provisioned.machine.id,
-        task: renderPrompt(task, benchConfig(c.env)),
+        task: renderBriefedPrompt(task, benchConfig(c.env)),
         max_steps: 60,
         deadline_seconds: 1800,
         // Nobody is watching to take over, so pausing would burn the machine's

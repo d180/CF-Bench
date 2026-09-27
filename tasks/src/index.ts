@@ -27,7 +27,7 @@ export type { HttpProbe, ProbeOptions, ProbeResult } from './http.ts';
 export { gradeUntilSettled, gradeUntilBroken, seedAndConfirm } from './runner.ts';
 export type { SettleOptions, SeedConfirmation } from './runner.ts';
 export { applyHealthyBaseline } from './baseline.ts';
-export { summarize, renderPrompt } from './types.ts';
+export { summarize, renderPrompt, renderBriefedPrompt, OPERATOR_BRIEF } from './types.ts';
 export type {
   BenchConfig, CfApi, Check, CheckKind, Difficulty, GradeResult, Task, TaskContext,
 } from './types.ts';

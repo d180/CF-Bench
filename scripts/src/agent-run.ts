@@ -2,7 +2,7 @@ import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { gradeUntilSettled, renderPrompt, seedAndConfirm } from '@cf-bench/tasks';
+import { gradeUntilSettled, renderBriefedPrompt, seedAndConfirm } from '@cf-bench/tasks';
 import type { GradeResult, Task, TaskContext } from '@cf-bench/tasks';
 import { loadEnv } from './config.ts';
 
@@ -130,7 +130,7 @@ function spawnRunner(
 
     let stdout = '';
     child.stdout.on('data', (chunk: Buffer) => { stdout += chunk.toString(); });
-    child.stdin.write(renderPrompt(task, ctx.config));
+    child.stdin.write(renderBriefedPrompt(task, ctx.config));
     child.stdin.end();
 
     child.on('close', () => {

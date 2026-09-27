@@ -119,3 +119,34 @@ export function renderPrompt(task: Task, config: BenchConfig): string {
     .replaceAll('{{ADMIN_ALLOWED_IP}}', config.adminAllowedIp)
     .replaceAll('{{EMAIL_DOMAIN}}', config.allowedEmailDomain);
 }
+
+/**
+ * Role framing given to every attempt, human or agent, for every task.
+ *
+ * Kept out of the tickets on purpose. A ticket describes a symptom, the way a
+ * real one does; it does not tell the reader that they are on call, that they
+ * have dashboard access, or that writing a report is not the job. Those are
+ * facts about the situation, not hints about the fix - so they belong to the
+ * harness, identical for every task and every agent, where they cannot
+ * advantage one attempt over another.
+ *
+ * This exists because of an observed failure: an agent read a ticket, produced
+ * a correct and detailed remediation guide, reported success, and changed
+ * nothing. It had diagnosed the problem perfectly. It had also left the site
+ * down. Without this framing the benchmark measures whether a model can write
+ * about infrastructure, which is not what it is for.
+ */
+export const OPERATOR_BRIEF = `You are the on-call infrastructure engineer for this company.
+
+A browser is open and already signed in to the company's Cloudflare dashboard.
+You have full access to change the configuration yourself.
+
+Resolve the ticket by making the changes on the live system, then confirm they
+took effect. Describing what somebody else should do is not resolving it - only
+a change to the running configuration counts. Do not report the task as done
+until you have made a change and verified the result.`;
+
+/** The ticket an attempt receives: operator framing followed by the ticket itself. */
+export function renderBriefedPrompt(task: Task, config: BenchConfig): string {
+  return `${OPERATOR_BRIEF}\n\n---\n\n${renderPrompt(task, config)}`;
+}
