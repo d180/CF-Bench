@@ -9,6 +9,7 @@ export const testConfig: BenchConfig = {
   teamDomain: 'team.cloudflareaccess.com',
   allowedEmailDomain: 'example.edu',
   originAIp: '203.0.113.10',
+  originBAddr: '2001:db8::1',
   adminAllowedIp: '198.51.100.7',
 };
 

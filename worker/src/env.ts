@@ -12,6 +12,7 @@ export interface Env {
   CF_TEAM_DOMAIN: string;
   ACCESS_ALLOWED_EMAIL_DOMAIN: string;
   ORIGIN_A_IP: string;
+  ORIGIN_B_ADDR?: string;
   ADMIN_ALLOWED_IP: string;
 
   // Secrets (wrangler secret put / .dev.vars) - never reach the frontend
@@ -31,6 +32,7 @@ export function benchConfig(env: Env): BenchConfig {
     teamDomain: env.CF_TEAM_DOMAIN,
     allowedEmailDomain: env.ACCESS_ALLOWED_EMAIL_DOMAIN,
     originAIp: env.ORIGIN_A_IP,
+    originBAddr: (env.ORIGIN_B_ADDR ?? '') === '' ? null : (env.ORIGIN_B_ADDR as string),
     adminAllowedIp: env.ADMIN_ALLOWED_IP,
   };
 }

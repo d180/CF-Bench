@@ -41,6 +41,7 @@ export interface BenchConfig {
   teamDomain: string;
   allowedEmailDomain: string;
   originAIp: string;
+  originBAddr: string | null;
   adminAllowedIp: string;
 }
 
@@ -117,7 +118,8 @@ export function renderPrompt(task: Task, config: BenchConfig): string {
   return task.prompt
     .replaceAll('{{ZONE}}', config.zoneName)
     .replaceAll('{{ADMIN_ALLOWED_IP}}', config.adminAllowedIp)
-    .replaceAll('{{EMAIL_DOMAIN}}', config.allowedEmailDomain);
+    .replaceAll('{{EMAIL_DOMAIN}}', config.allowedEmailDomain)
+    .replaceAll('{{ORIGIN_A}}', config.originAIp);
 }
 
 /**

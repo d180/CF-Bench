@@ -15,6 +15,7 @@ CF_ZONE_NAME = ""
 CF_TEAM_DOMAIN = ""
 ACCESS_ALLOWED_EMAIL_DOMAIN = ""
 ORIGIN_A_IP = ""
+ORIGIN_B_ADDR = ""
 ADMIN_ALLOWED_IP = ""
 
 # Secrets are NOT set here. Use:

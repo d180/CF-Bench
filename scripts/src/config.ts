@@ -57,6 +57,7 @@ export function loadContext(): LoadedContext {
     teamDomain: required(env, 'CF_TEAM_DOMAIN'),
     allowedEmailDomain: required(env, 'ACCESS_ALLOWED_EMAIL_DOMAIN'),
     originAIp: required(env, 'ORIGIN_A_IP'),
+    originBAddr: (env['ORIGIN_B_ADDR'] ?? '') === '' ? null : (env['ORIGIN_B_ADDR'] as string),
     adminAllowedIp: required(env, 'ADMIN_ALLOWED_IP'),
   };
 
