@@ -15,7 +15,7 @@ const USAGE = `cf-bench
   npm run cf-bench -- fix    <task-id>    (apply the known-good solution)
   npm run cf-bench -- verify <task-id>    (full integration loop)
 
-  npm run cf-bench -- agent-run <task-id> --agent browser-use [--max-steps N] [--model ID]
+  npm run cf-bench -- agent-run <task-id> --agent browser-use [--max-steps N] [--model ID] [--fast]
                                           (reset, hand the ticket to a local
                                            agent, then grade the zone)
 `;
@@ -166,6 +166,7 @@ async function main(): Promise<number> {
         workerUrl: process.env['WORKER_URL'] ?? 'http://127.0.0.1:8788',
         maxSteps: Number(flag('max-steps') ?? '40'),
         model: flag('model'),
+        fast: argv.includes('--fast'),
       });
     }
     default:

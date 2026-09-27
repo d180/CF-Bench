@@ -32,7 +32,7 @@ export interface BrowserUseResult {
 export async function runBrowserUseAgent(
   task: Task,
   ctx: TaskContext,
-  options: { workerUrl: string; maxSteps: number; model?: string },
+  options: { workerUrl: string; maxSteps: number; model?: string; fast?: boolean },
 ): Promise<number> {
   console.log(`\n=== agent-run ${task.id} (browser-use) ===\n`);
 
@@ -120,7 +120,7 @@ function spawnRunner(
   python: string,
   task: Task,
   ctx: TaskContext,
-  options: { maxSteps: number; model?: string; env: Record<string, string> },
+  options: { maxSteps: number; model?: string; fast?: boolean; env: Record<string, string> },
 ): Promise<BrowserUseResult> {
   return new Promise((resolvePromise) => {
     const args = [
@@ -129,6 +129,7 @@ function spawnRunner(
       '--max-steps', String(options.maxSteps),
     ];
     if (options.model !== undefined) args.push('--model', options.model);
+    if (options.fast === true) args.push('--fast');
 
     const child = spawn(python, args, {
       cwd: agentDir,

@@ -44,6 +44,7 @@ async def main() -> int:
     parser.add_argument("--max-steps", type=int, default=40)
     parser.add_argument("--headless", action="store_true", help="off by default so the run is watchable")
     parser.add_argument("--start-url", default="https://dash.cloudflare.com")
+    parser.add_argument("--fast", action="store_true", help="fewer LLM calls per step; faster but less deliberate")
     args = parser.parse_args()
 
     ticket = sys.stdin.read().strip()
@@ -118,6 +119,17 @@ async def main() -> int:
         llm=llm,
         browser=browser,
         initial_actions=[{"navigate": {"url": args.start_url, "new_tab": False}}],
+        # browser-use ships an LLM judge that renders its own verdict on the
+        # run. It is always off here: the harness grades the zone, and a second
+        # verdict derived from the agent's own trajectory is exactly the kind of
+        # self-report this benchmark exists not to trust. It also costs a model
+        # call whose output is discarded.
+        use_judge=False,
+        # --fast trades deliberation for wall-clock: no per-step reasoning
+        # block, no planner, and browser-use's own flash mode.
+        flash_mode=args.fast,
+        use_thinking=not args.fast,
+        enable_planning=not args.fast,
     )
 
     started = time.time()
