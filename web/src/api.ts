@@ -1,4 +1,4 @@
-import type { Run, Task } from './types.ts';
+import type { Check, Run, Task } from './types.ts';
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(path, {
@@ -22,16 +22,26 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return body as T;
 }
 
+export interface Config {
+  zoneName: string;
+  dashboardUrl: string;
+}
+
+export interface Status {
+  pass: boolean;
+  checks: Check[];
+}
+
 export const api = {
   tasks: () => request<Task[]>('/api/tasks'),
   runs: () => request<Run[]>('/api/runs'),
+  config: () => request<Config>('/api/config'),
+  status: (taskId: string) => request<Status>(`/api/tasks/${taskId}/status`),
   reset: (taskId: string) =>
     request<{ ok: boolean; message: string }>(`/api/tasks/${taskId}/reset`, { method: 'POST' }),
-  grade: (taskId: string, body: { actor: 'human' | 'agent'; videoUrl?: string; notes?: string }) =>
+  grade: (taskId: string, body: { actor: 'human' | 'agent' }) =>
     request<{ runId: string; pass: boolean }>(`/api/tasks/${taskId}/grade`, {
       method: 'POST',
       body: JSON.stringify(body),
     }),
-  agentRun: (taskId: string) =>
-    request<{ runId?: string; error?: string }>(`/api/tasks/${taskId}/agent-run`, { method: 'POST' }),
 };

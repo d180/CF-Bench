@@ -1,15 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api } from './api.ts';
+import type { Config, Status } from './api.ts';
 import type { Check, Run, Task } from './types.ts';
-
-type Busy = Record<string, string | undefined>;
 
 export function App(): JSX.Element {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [runs, setRuns] = useState<Run[]>([]);
+  const [config, setConfig] = useState<Config | null>(null);
   const [open, setOpen] = useState<string | null>(null);
-  const [busy, setBusy] = useState<Busy>({});
-  const [message, setMessage] = useState<{ text: string; ok: boolean } | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async (): Promise<void> => {
     setRuns(await api.runs());
@@ -18,135 +17,147 @@ export function App(): JSX.Element {
   useEffect(() => {
     void (async (): Promise<void> => {
       try {
-        setTasks(await api.tasks());
+        const [t, c] = await Promise.all([api.tasks(), api.config()]);
+        setTasks(t);
+        setConfig(c);
         await refresh();
-      } catch (error) {
-        setMessage({ text: error instanceof Error ? error.message : String(error), ok: false });
+      } catch (e) {
+        setError(e instanceof Error ? e.message : String(e));
       }
     })();
   }, [refresh]);
-
-  const run = async (taskId: string, label: string, action: () => Promise<string>): Promise<void> => {
-    setBusy((b) => ({ ...b, [taskId]: label }));
-    setMessage(null);
-    try {
-      setMessage({ text: await action(), ok: true });
-      await refresh();
-    } catch (error) {
-      setMessage({ text: error instanceof Error ? error.message : String(error), ok: false });
-    } finally {
-      setBusy((b) => ({ ...b, [taskId]: undefined }));
-    }
-  };
 
   return (
     <div className="wrap">
       <header>
         <h1>CF-Bench</h1>
-        <p>
-          Realistic Cloudflare admin tasks, reset to an identical starting state and graded on the
-          end result — the live configuration and what the site actually does.
-        </p>
+        <p>{config === null ? ' ' : config.zoneName}</p>
       </header>
 
-      {message !== null && (
-        <div className={`notice ${message.ok ? 'ok' : 'err'}`}>{message.text}</div>
-      )}
+      {error !== null && <div className="notice err">{error}</div>}
 
       {tasks.map((task) => (
         <TaskCard
           key={task.id}
           task={task}
+          config={config}
           runs={runs.filter((r) => r.task_id === task.id)}
           expanded={open === task.id}
-          busy={busy[task.id]}
           onToggle={() => { setOpen(open === task.id ? null : task.id); }}
-          onRun={run}
+          onChanged={refresh}
         />
       ))}
-
-      {tasks.length === 0 && message === null && <p className="empty">Loading tasks…</p>}
     </div>
   );
 }
 
+type Phase = 'idle' | 'checking' | 'resetting' | 'grading';
+
 interface TaskCardProps {
   task: Task;
+  config: Config | null;
   runs: Run[];
   expanded: boolean;
-  busy: string | undefined;
   onToggle: () => void;
-  onRun: (taskId: string, label: string, action: () => Promise<string>) => Promise<void>;
+  onChanged: () => Promise<void>;
 }
 
-function TaskCard({ task, runs, expanded, busy, onToggle, onRun }: TaskCardProps): JSX.Element {
-  const [videoUrl, setVideoUrl] = useState('');
-  const latest = runs[0];
+function TaskCard({ task, config, runs, expanded, onToggle, onChanged }: TaskCardProps): JSX.Element {
+  const [status, setStatus] = useState<Status | null>(null);
+  const [phase, setPhase] = useState<Phase>('idle');
+  const [failure, setFailure] = useState<string | null>(null);
+
+  const check = useCallback(async (): Promise<void> => {
+    setPhase('checking');
+    setFailure(null);
+    try {
+      setStatus(await api.status(task.id));
+    } catch (e) {
+      setFailure(e instanceof Error ? e.message : String(e));
+    } finally {
+      setPhase('idle');
+    }
+  }, [task.id]);
+
+  useEffect(() => {
+    if (expanded && status === null && phase === 'idle') void check();
+  }, [expanded, status, phase, check]);
+
+  const busy = phase !== 'idle';
+
+  const reset = async (): Promise<void> => {
+    setPhase('resetting');
+    setFailure(null);
+    try {
+      await api.reset(task.id);
+      setStatus(await api.status(task.id));
+    } catch (e) {
+      setFailure(e instanceof Error ? e.message : String(e));
+    } finally {
+      setPhase('idle');
+    }
+  };
+
+  const grade = async (): Promise<void> => {
+    setPhase('grading');
+    setFailure(null);
+    try {
+      await api.grade(task.id, { actor: 'human' });
+      setStatus(await api.status(task.id));
+      await onChanged();
+    } catch (e) {
+      setFailure(e instanceof Error ? e.message : String(e));
+    } finally {
+      setPhase('idle');
+    }
+  };
 
   return (
     <section className="task">
       <div className="task-head" onClick={onToggle}>
-        <span className="id">{task.id}</span>
+        <span className="chev">{expanded ? '▾' : '▸'}</span>
         <h2>{task.title}</h2>
-        {latest !== undefined && <Verdict run={latest} />}
+        <span className="id">{task.id}</span>
         <span className={`badge ${task.difficulty}`}>{task.difficulty}</span>
+        <StatusDot status={status} phase={phase} expanded={expanded} />
       </div>
 
       {expanded && (
         <div className="task-body">
           <pre className="ticket">{task.prompt}</pre>
 
-          <div className="actions">
-            <button
-              disabled={busy !== undefined}
-              onClick={() => {
-                void onRun(task.id, 'reset', async () => (await api.reset(task.id)).message);
-              }}
-            >
-              {busy === 'reset' ? 'Resetting…' : 'Reset'}
-            </button>
+          <ol className="steps">
+            <li>
+              <button disabled={busy} onClick={() => { void reset(); }}>
+                {phase === 'resetting' ? 'Resetting…' : 'Reset'}
+              </button>
+            </li>
+            <li>
+              {config === null ? (
+                <button disabled>Cloudflare</button>
+              ) : (
+                <a className="btn" href={config.dashboardUrl} target="_blank" rel="noreferrer">
+                  Cloudflare &#8599;
+                </a>
+              )}
+            </li>
+            <li>
+              <button className="primary" disabled={busy} onClick={() => { void grade(); }}>
+                {phase === 'grading' ? 'Grading…' : 'Grade'}
+              </button>
+            </li>
+          </ol>
 
-            <button
-              className="primary"
-              disabled={busy !== undefined}
-              onClick={() => {
-                void onRun(task.id, 'grade', async () => {
-                  const result = await api.grade(task.id, {
-                    actor: 'human',
-                    videoUrl: videoUrl === '' ? undefined : videoUrl,
-                  });
-                  return `Graded: ${result.pass ? 'PASS' : 'FAIL'}`;
-                });
-              }}
-            >
-              {busy === 'grade' ? 'Grading…' : 'Grade'}
-            </button>
+          {failure !== null && <div className="notice err">{failure}</div>}
 
-            <button
-              disabled={busy !== undefined}
-              onClick={() => {
-                void onRun(task.id, 'agent', async () => {
-                  const result = await api.agentRun(task.id);
-                  return result.error ?? 'Agent run started.';
-                });
-              }}
-            >
-              {busy === 'agent' ? 'Starting…' : 'Run agent'}
-            </button>
+          {status !== null && <CheckList checks={status.checks} />}
+
+          <div className="runs-head">
+            <h3>Attempts</h3>
+            <span className="kind">{runs.length}</span>
           </div>
-
-          <div className="actions">
-            <input
-              type="url"
-              placeholder="Screen recording URL (attached to the next human grade)"
-              value={videoUrl}
-              onChange={(e) => { setVideoUrl(e.target.value); }}
-            />
-          </div>
-
-          <h3>Run history</h3>
           {runs.length === 0 ? (
-            <p className="empty">No attempts yet.</p>
+            <p className="empty">None yet</p>
           ) : (
             runs.map((r) => <RunRow key={r.id} run={r} />)
           )}
@@ -156,58 +167,67 @@ function TaskCard({ task, runs, expanded, busy, onToggle, onRun }: TaskCardProps
   );
 }
 
-function Verdict({ run }: { run: Run }): JSX.Element {
-  if (run.passed === null) return <span className="verdict pending">{run.status}</span>;
+function StatusDot({
+  status, phase, expanded,
+}: { status: Status | null; phase: Phase; expanded: boolean }): JSX.Element {
+  if (phase === 'checking' || phase === 'resetting' || phase === 'grading') {
+    return <span className="state working">checking</span>;
+  }
+  if (status === null) return <span className="state unknown">{expanded ? '' : ''}</span>;
   return (
-    <span className={`verdict ${run.passed === 1 ? 'pass' : 'fail'}`}>
-      {run.passed === 1 ? 'PASS' : 'FAIL'}
+    <span className={`state ${status.pass ? 'fixed' : 'broken'}`}>
+      {status.pass ? 'fixed' : 'broken'}
     </span>
+  );
+}
+
+function CheckList({ checks }: { checks: Check[] }): JSX.Element {
+  return (
+    <div className="checks">
+      {checks.map((c) => (
+        <div className="check" key={c.name}>
+          <span className={`mark ${c.pass ? 'pass' : 'fail'}`}>{c.pass ? 'PASS' : 'FAIL'}</span>
+          <span className="check-name">{c.name}</span>
+          <span className="check-detail">{c.detail}</span>
+        </div>
+      ))}
+    </div>
   );
 }
 
 function RunRow({ run }: { run: Run }): JSX.Element {
   const [open, setOpen] = useState(false);
   const passed = run.checks.filter((c) => c.pass).length;
+  const who = run.agent_kind ?? run.actor;
 
   return (
     <div className="run">
       <div className="run-head" onClick={() => { setOpen(!open); }}>
+        <span className="chev">{open ? '▾' : '▸'}</span>
+        <span className="actor">{who}</span>
         <time>{new Date(run.created_at).toLocaleString()}</time>
-        <span className="actor">{run.agent_kind ?? run.actor}</span>
-        <Verdict run={run} />
+        <span className="spacer" />
         {run.checks.length > 0 && (
-          <span className="kind">
-            {passed}/{run.checks.length} checks
+          <span className="kind">{passed}/{run.checks.length}</span>
+        )}
+        {run.passed === null ? (
+          <span className="verdict pending">{run.status}</span>
+        ) : (
+          <span className={`verdict ${run.passed === 1 ? 'pass' : 'fail'}`}>
+            {run.passed === 1 ? 'PASS' : 'FAIL'}
           </span>
         )}
-        <span className="spacer" />
-        {run.video_url !== null && (
-          <a href={run.video_url} target="_blank" rel="noreferrer" onClick={(e) => { e.stopPropagation(); }}>
-            recording
-          </a>
-        )}
-        {run.coasty_run_id !== null && <span className="kind">coasty {run.coasty_run_id.slice(0, 12)}</span>}
       </div>
-
       {open && (
-        <div className="checks">
+        <div className="run-body">
           {run.error !== null && <div className="notice err">{run.error}</div>}
-          {run.checks.length === 0 && <p className="empty">Not graded yet.</p>}
-          {run.checks.map((c) => <CheckRow key={c.name} check={c} />)}
-          {run.notes !== null && run.notes !== '' && <p className="empty">Notes: {run.notes}</p>}
+          {run.checks.length === 0 ? (
+            <p className="empty">Not graded</p>
+          ) : (
+            <CheckList checks={run.checks} />
+          )}
         </div>
       )}
-    </div>
-  );
-}
-
-function CheckRow({ check }: { check: Check }): JSX.Element {
-  return (
-    <div className="check">
-      <span className={`mark ${check.pass ? 'pass' : 'fail'}`}>{check.pass ? 'PASS' : 'FAIL'}</span>
-      <span className="check-name">{check.name}</span>
-      <span className="kind">{check.kind}</span>
-      <span className="check-detail">{check.detail}</span>
     </div>
   );
 }

@@ -25,7 +25,6 @@ export interface Run {
   coasty_status: string | null;
   coasty_steps: number | null;
   coasty_cost_cents: number | null;
-  video_url: string | null;
   notes: string | null;
   error: string | null;
   checks: Check[];

@@ -77,6 +77,27 @@ app.get('/api/tasks', (c) => {
 
 app.get('/api/runs', async (c) => c.json(await listRuns(c.env)));
 
+/** Deployment identity the dashboard needs to link out to the real thing. */
+app.get('/api/config', (c) =>
+  c.json({
+    zoneName: c.env.CF_ZONE_NAME,
+    dashboardUrl: `https://dash.cloudflare.com/${c.env.CF_ACCOUNT_ID}/${c.env.CF_ZONE_NAME}`,
+  }),
+);
+
+/**
+ * Current state of the task, without recording anything.
+ *
+ * Grading and recording an attempt are different acts. Checking whether a task
+ * is currently broken should not leave a run in the history, or the history
+ * stops being a list of attempts.
+ */
+app.get('/api/tasks/:id/status', async (c) => {
+  const task = getTask(c.req.param('id'));
+  const result = await task.grade(taskContext(c.env));
+  return c.json({ pass: result.pass, checks: result.checks });
+});
+
 app.get('/api/tasks/:id/runs', async (c) => c.json(await listRuns(c.env, c.req.param('id'))));
 
 /** Reset a task to its starting state, waiting until the breakage is live. */
