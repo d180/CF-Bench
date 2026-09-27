@@ -1,10 +1,16 @@
 # ---------------------------------------------------------------------------
 # cf-bench origin
 #
-# Two deployments live on this one box, on two addresses:
-#   IPv4 34.28.27.25            -> deployment A, the CURRENT release
-#   IPv6 2600:1900:4000:82d::   -> deployment B, the OLD release, not yet
-#                                  decommissioned
+# Substitute your own values before using this: example.com for your zone, and
+# ORIGIN_IPV6 for your origin's second address. The real addresses are kept out
+# of the repo deliberately - publishing an origin address lets anyone bypass
+# Cloudflare and reach it directly, which would defeat the Access and WAF tasks
+# outright, since those only protect traffic that goes through Cloudflare.
+#
+# Two deployments live on one box, on two addresses:
+#   IPv4 (all interfaces) -> deployment A, the CURRENT release
+#   ORIGIN_IPV6           -> deployment B, the OLD release, not yet
+#                            decommissioned
 #
 # Cloudflare sends the same Host header whichever one it connects to, so the
 # address is the only thing distinguishing them. That is what makes "a 200 does
@@ -15,7 +21,7 @@
 # fetches over HTTP, gets this redirect, and loops - task 01's whole premise.
 server {
     listen 80 default_server;
-    listen [2600:1900:4000:82d::]:80 default_server;
+    listen [ORIGIN_IPV6]:80 default_server;
     server_name _;
     return 301 https://$host$request_uri;
 }
@@ -23,7 +29,7 @@ server {
 # --- Main site: apex + www -------------------------------------------------
 server {
     listen 443 ssl default_server;
-    server_name promptsuggestionmcp.com www.promptsuggestionmcp.com;
+    server_name example.com www.example.com;
 
     ssl_certificate     /etc/ssl/cloudflare/origin.pem;
     ssl_certificate_key /etc/ssl/cloudflare/origin.key;
@@ -50,7 +56,7 @@ server {
 # --- Staging ---------------------------------------------------------------
 server {
     listen 443 ssl;
-    server_name staging.promptsuggestionmcp.com;
+    server_name staging.example.com;
     ssl_certificate     /etc/ssl/cloudflare/origin.pem;
     ssl_certificate_key /etc/ssl/cloudflare/origin.key;
     add_header X-CFBench-Site "staging" always;
@@ -61,7 +67,7 @@ server {
 # --- api on deployment A (IPv4): the current release ------------------------
 server {
     listen 443 ssl;
-    server_name api.promptsuggestionmcp.com;
+    server_name api.example.com;
 
     ssl_certificate     /etc/ssl/cloudflare/origin.pem;
     ssl_certificate_key /etc/ssl/cloudflare/origin.key;
@@ -104,7 +110,7 @@ server {
 # default_server for this address, so any Host that lands here is answered by
 # the old deployment - which is exactly how a half-finished cutover behaves.
 server {
-    listen [2600:1900:4000:82d::]:443 ssl default_server;
+    listen [ORIGIN_IPV6]:443 ssl default_server;
     server_name _;
 
     ssl_certificate     /etc/ssl/cloudflare/origin.pem;
