@@ -1,4 +1,6 @@
-import { getTask, gradeUntilBroken, gradeUntilSettled, seedAndConfirm, tasks } from '@cf-bench/tasks';
+import {
+  getTask, gradeUntilBroken, gradeUntilSettled, renderBriefedPrompt, seedAndConfirm, tasks,
+} from '@cf-bench/tasks';
 import type { GradeResult, Task, TaskContext } from '@cf-bench/tasks';
 import { loadContext } from './config.ts';
 import { runBrowserUseAgent } from './agent-run.ts';
@@ -114,13 +116,14 @@ async function main(): Promise<number> {
 
   const task = getTask(taskId);
 
+  const ctx = loadContext();
+
   if (command === 'show') {
     console.log(`${task.id}  [${task.difficulty}]\n${task.title}\n`);
-    console.log(task.prompt);
+    // Rendered, not raw: this is the text an attempt actually receives.
+    console.log(renderBriefedPrompt(task, ctx.config));
     return 0;
   }
-
-  const ctx = loadContext();
 
   switch (command) {
     case 'seed': {
